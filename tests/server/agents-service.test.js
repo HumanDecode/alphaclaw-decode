@@ -3079,6 +3079,24 @@ describe("server/agents/service", () => {
             main: { identity: { name: "Edna" } },
           },
         },
+        channels: {
+          telegram: {
+            enabled: true,
+            botToken: "${TELEGRAM_BOT_TOKEN}",
+          },
+          slack: {
+            accounts: {
+              default: { botToken: "${SLACK_BOT_TOKEN}" },
+              alerts: { botToken: "${SLACK_BOT_TOKEN_ALERTS}" },
+            },
+          },
+        },
+        bindings: [
+          {
+            agentId: "main",
+            match: { channel: "slack", accountId: "alerts" },
+          },
+        ],
       },
     });
     const service = createAgentsService({
@@ -3092,11 +3110,26 @@ describe("server/agents/service", () => {
     );
     expect(fsMock.readConfig().agents).not.toHaveProperty("list");
     expect(fsMock.readConfig().agents.ownership).toBe("explicit");
+    expect(fsMock.readConfig().bindings).toEqual([
+      {
+        agentId: "main",
+        match: { channel: "slack", accountId: "alerts" },
+      },
+      {
+        agentId: "main",
+        match: { channel: "telegram", accountId: "default" },
+      },
+      {
+        agentId: "main",
+        match: { channel: "slack", accountId: "default" },
+      },
+    ]);
 
     service.deleteAgent("ops", { keepWorkspace: true });
     expect(fsMock.readConfig().agents.entries).not.toHaveProperty("ops");
     expect(fsMock.readConfig().agents.entries).toHaveProperty("main");
     expect(fsMock.readConfig().agents).not.toHaveProperty("ownership");
+    expect(fsMock.readConfig().bindings).toHaveLength(3);
   });
 
   it("normalizes stale explicit ownership for a sole canonical agent", async () => {
