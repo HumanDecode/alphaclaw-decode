@@ -8,7 +8,7 @@
       href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600;700&display=swap"
       rel="stylesheet"
     />
-    <link rel="icon" type="image/svg+xml" href="./img/logo.svg" />
+    <link id="favicon" rel="icon" type="image/svg+xml" href="./img/logo.svg" />
     <link rel="stylesheet" href="./css/theme.css" />
     <link rel="stylesheet" href="./css/tailwind.generated.css" />
     <script>
@@ -24,6 +24,7 @@
     <div class="max-w-sm w-full relative z-10">
       <div class="text-center mb-6">
         <img
+          id="brand-logo"
           src="./img/logo.svg"
           alt="alphaclaw"
           class="mx-auto mb-4"
@@ -36,6 +37,11 @@
         <p style="color: var(--text-muted)" class="text-xs mb-4">
           OpenClaw made easy
         </p>
+        <p
+          id="instance-name"
+          class="hidden text-xs mb-4"
+          style="color: var(--accent)"
+        ></p>
       </div>
       <form
         id="login-form"
@@ -64,6 +70,32 @@
       const formEl = document.getElementById("login-form");
       const passwordEl = document.getElementById("password");
       const submitButtonEl = document.getElementById("submit-btn");
+      const brandLogoEl = document.getElementById("brand-logo");
+      const faviconEl = document.getElementById("favicon");
+      const instanceNameEl = document.getElementById("instance-name");
+
+      brandLogoEl.addEventListener(
+        "error",
+        () => {
+          brandLogoEl.src = "./img/logo.svg";
+        },
+        { once: true },
+      );
+
+      fetch("/api/auth/branding")
+        .then((res) => (res.ok ? res.json() : null))
+        .then((data) => {
+          const branding = data?.branding;
+          if (!branding) return;
+          if (branding.logoUrl) brandLogoEl.src = branding.logoUrl;
+          if (branding.faviconUrl) faviconEl.href = branding.faviconUrl;
+          document.title = branding.documentTitle || "alphaclaw";
+          if (branding.instanceName) {
+            instanceNameEl.textContent = branding.instanceName;
+            instanceNameEl.classList.remove("hidden");
+          }
+        })
+        .catch(() => {});
 
       const syncButtonState = () => {
         const hasValue = passwordEl.value.length > 0;

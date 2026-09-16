@@ -46,6 +46,27 @@ const createTestApp = ({ setupPassword, loginThrottle, trustProxy } = {}) => {
 describe("server/routes/auth", () => {
   afterEach(() => {
     delete process.env.SETUP_PASSWORD;
+    delete process.env.ALPHACLAW_INSTANCE_NAME;
+    delete process.env.ALPHACLAW_LOGO_URL;
+    delete process.env.ALPHACLAW_FAVICON_URL;
+  });
+
+  it("serves public deployment branding for the login screen", async () => {
+    process.env.ALPHACLAW_INSTANCE_NAME = "Edna";
+    process.env.ALPHACLAW_LOGO_URL = "https://assets.example.com/edna.png";
+    const { app } = createTestApp({ setupPassword: "secret" });
+
+    const res = await request(app).get("/api/auth/branding");
+
+    expect(res.status).toBe(200);
+    expect(res.body).toEqual({
+      ok: true,
+      branding: expect.objectContaining({
+        instanceName: "Edna",
+        logoUrl: "https://assets.example.com/edna.png",
+        documentTitle: "Edna · AlphaClaw",
+      }),
+    });
   });
 
   it("returns 503 when setup password is unset", async () => {

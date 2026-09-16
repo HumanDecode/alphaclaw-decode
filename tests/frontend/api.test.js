@@ -39,6 +39,21 @@ describe("frontend/api", () => {
     expect(window.location.href).toBe("http://localhost/");
   });
 
+  it("fetchBranding loads public instance branding", async () => {
+    const payload = {
+      ok: true,
+      branding: { instanceName: "Edna", logoUrl: "/branding/edna.png" },
+    };
+    global.fetch.mockResolvedValue(mockJsonResponse(200, payload));
+    const api = await loadApiModule();
+
+    await expect(api.fetchBranding()).resolves.toEqual(payload);
+    expect(global.fetch).toHaveBeenCalledWith(
+      "/api/auth/branding",
+      expect.objectContaining({ headers: expect.any(Headers) }),
+    );
+  });
+
   it("refreshModels requests a server-side catalog refresh", async () => {
     const payload = { ok: true, stale: true, refreshing: true, models: [] };
     global.fetch.mockResolvedValue(mockJsonResponse(200, payload));
