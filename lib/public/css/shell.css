@@ -200,6 +200,33 @@
   gap: 8px;
 }
 
+.sidebar-brand-logo {
+  width: 20px;
+  height: 20px;
+  flex: 0 0 auto;
+  object-fit: contain;
+}
+
+.sidebar-brand-copy {
+  display: inline-flex;
+  align-items: center;
+  min-width: 0;
+  gap: 7px;
+}
+
+.sidebar-instance-name {
+  max-width: 96px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  padding: 1px 6px;
+  border: 1px solid var(--border-strong);
+  border-radius: 999px;
+  color: var(--text);
+  font-size: 10px;
+  line-height: 16px;
+}
+
 .sidebar-label {
   padding: 12px 16px 6px;
   font-size: 11px;
