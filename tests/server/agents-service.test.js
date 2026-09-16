@@ -3075,7 +3075,6 @@ describe("server/agents/service", () => {
       initialConfig: {
         agents: {
           defaults: { systemAgent: { agentId: "main" } },
-          ownership: "explicit",
           entries: {
             main: { identity: { name: "Edna" } },
           },
@@ -3092,10 +3091,34 @@ describe("server/agents/service", () => {
       "Operations",
     );
     expect(fsMock.readConfig().agents).not.toHaveProperty("list");
+    expect(fsMock.readConfig().agents.ownership).toBe("explicit");
 
     service.deleteAgent("ops", { keepWorkspace: true });
     expect(fsMock.readConfig().agents.entries).not.toHaveProperty("ops");
     expect(fsMock.readConfig().agents.entries).toHaveProperty("main");
+    expect(fsMock.readConfig().agents).not.toHaveProperty("ownership");
+  });
+
+  it("normalizes stale explicit ownership for a sole canonical agent", async () => {
+    const fsMock = buildFsMock({
+      initialConfig: {
+        agents: {
+          defaults: { systemAgent: { agentId: "main" } },
+          ownership: "explicit",
+          entries: {
+            main: { identity: { name: "Edna" } },
+          },
+        },
+      },
+    });
+    const service = createAgentsService({
+      fs: fsMock,
+      OPENCLAW_DIR: "/tmp/openclaw",
+    });
+
+    await service.updateAgent("main", { name: "Edna Updated" });
+
+    expect(fsMock.readConfig().agents).not.toHaveProperty("ownership");
   });
 
   it("persists the canonical default-agent designation", () => {
