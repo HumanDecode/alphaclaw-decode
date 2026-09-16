@@ -64,6 +64,16 @@ describe("server/alphaclaw-version", () => {
     expect(version).toBe(expectedPkg.version);
   });
 
+  it("reads Decode version from package.json", () => {
+    const { service } = createService();
+    const version = service.readDecodeVersion();
+
+    const expectedPkg = JSON.parse(
+      fs.readFileSync(path.join(kNpmPackageRoot, "package.json"), "utf8"),
+    );
+    expect(version).toBe(expectedPkg.decodeVersion);
+  });
+
   it("returns local self-update status from npm", async () => {
     const fetchMock = vi.fn(async (url) => {
       expect(url).toBe("https://registry.npmjs.org/@chrysb%2falphaclaw");
@@ -86,6 +96,7 @@ describe("server/alphaclaw-version", () => {
       expect.objectContaining({
         ok: true,
         currentVersion: expect.any(String),
+        currentDecodeVersion: "0.1.0",
         currentOpenclawVersion: "2026.4.10",
         latestVersion: "99.0.0",
         hasUpdate: true,
