@@ -101,6 +101,39 @@ describe("server/webhooks", () => {
     );
   });
 
+  it("routes webhooks to agents from the canonical entries roster", () => {
+    const openclawDir = "/tmp/openclaw";
+    const configPath = path.join(openclawDir, "openclaw.json");
+    const fs = createMemoryFs({
+      [configPath]: JSON.stringify({
+        agents: {
+          defaults: { systemAgent: { agentId: "ops" } },
+          ownership: "explicit",
+          entries: {
+            main: { identity: { name: "Edna" } },
+            ops: { identity: { name: "Operations" } },
+          },
+        },
+      }),
+    });
+
+    const detail = createWebhook({
+      fs,
+      constants: { OPENCLAW_DIR: openclawDir },
+      name: "canonical-agent",
+      destination: {
+        channel: "telegram",
+        to: "123",
+        agentId: "main",
+      },
+    });
+
+    expect(detail.agentId).toBe("main");
+    const config = JSON.parse(fs.readFileSync(configPath, "utf8"));
+    expect(config.hooks.mappings[0].agentId).toBe("main");
+    expect(config.agents).not.toHaveProperty("list");
+  });
+
   it("backfills stable IDs on existing webhook mappings", () => {
     const openclawDir = "/tmp/openclaw";
     const configPath = path.join(openclawDir, "openclaw.json");

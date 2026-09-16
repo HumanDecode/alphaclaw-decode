@@ -3011,4 +3011,116 @@ describe("server/agents/service", () => {
       }),
     ).rejects.toThrow("Channel token already exists in TELEGRAM_BOT_TOKEN");
   });
+
+  it("lists agents from the canonical entries roster", () => {
+    const fsMock = buildFsMock({
+      initialConfig: {
+        agents: {
+          defaults: {
+            systemAgent: { agentId: "ops" },
+          },
+          ownership: "explicit",
+          entries: {
+            main: { identity: { name: "Edna" } },
+            ops: { identity: { name: "Operations" } },
+          },
+        },
+      },
+    });
+    const service = createAgentsService({
+      fs: fsMock,
+      OPENCLAW_DIR: "/tmp/openclaw",
+    });
+
+    expect(service.listAgents()).toEqual([
+      expect.objectContaining({ id: "main", name: "Edna", default: false }),
+      expect.objectContaining({
+        id: "ops",
+        name: "Operations",
+        default: true,
+      }),
+    ]);
+  });
+
+  it("updates canonical agent entries without restoring agents.list", async () => {
+    const fsMock = buildFsMock({
+      initialConfig: {
+        agents: {
+          defaults: { systemAgent: { agentId: "main" } },
+          ownership: "explicit",
+          entries: {
+            main: { identity: { name: "Edna" } },
+            ops: { identity: { name: "Operations" } },
+          },
+        },
+      },
+    });
+    const service = createAgentsService({
+      fs: fsMock,
+      OPENCLAW_DIR: "/tmp/openclaw",
+    });
+
+    await service.updateAgent("ops", { name: "Operations Updated" });
+    const config = fsMock.readConfig();
+
+    expect(config.agents).not.toHaveProperty("list");
+    expect(config.agents.entries.ops.identity.name).toBe("Operations Updated");
+    expect(config.agents.entries.ops).not.toHaveProperty("id");
+    expect(config.agents.entries.ops).not.toHaveProperty("default");
+    expect(config.agents.ownership).toBe("explicit");
+  });
+
+  it("creates and deletes agents in the canonical entries roster", () => {
+    const fsMock = buildFsMock({
+      initialConfig: {
+        agents: {
+          defaults: { systemAgent: { agentId: "main" } },
+          ownership: "explicit",
+          entries: {
+            main: { identity: { name: "Edna" } },
+          },
+        },
+      },
+    });
+    const service = createAgentsService({
+      fs: fsMock,
+      OPENCLAW_DIR: "/tmp/openclaw",
+    });
+
+    service.createAgent({ id: "ops", name: "Operations" });
+    expect(fsMock.readConfig().agents.entries.ops.identity.name).toBe(
+      "Operations",
+    );
+    expect(fsMock.readConfig().agents).not.toHaveProperty("list");
+
+    service.deleteAgent("ops", { keepWorkspace: true });
+    expect(fsMock.readConfig().agents.entries).not.toHaveProperty("ops");
+    expect(fsMock.readConfig().agents.entries).toHaveProperty("main");
+  });
+
+  it("persists the canonical default-agent designation", () => {
+    const fsMock = buildFsMock({
+      initialConfig: {
+        agents: {
+          defaults: { systemAgent: { agentId: "main" } },
+          ownership: "explicit",
+          entries: {
+            main: { identity: { name: "Edna" } },
+            ops: { identity: { name: "Operations" } },
+          },
+        },
+      },
+    });
+    const service = createAgentsService({
+      fs: fsMock,
+      OPENCLAW_DIR: "/tmp/openclaw",
+    });
+
+    service.setDefaultAgent("ops");
+    const config = fsMock.readConfig();
+
+    expect(config.agents.defaults.systemAgent.agentId).toBe("ops");
+    expect(config.agents).not.toHaveProperty("list");
+    expect(service.getAgent("ops")?.default).toBe(true);
+  });
 });

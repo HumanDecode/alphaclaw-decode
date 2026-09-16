@@ -58,4 +58,21 @@ describe("codex-runtime-config", () => {
     expect(ensureCodexRuntimePlugin(cfg)).toBe(true);
     expect(cfg.plugins.allow).toContain("codex");
   });
+
+  it("detects Codex model overrides in canonical agent entries", () => {
+    const cfg = {
+      agents: {
+        defaults: { model: { primary: "anthropic/claude-opus-4-6" } },
+        entries: {
+          main: {
+            model: { primary: "openai/gpt-5.6-sol" },
+          },
+        },
+      },
+    };
+
+    expect(configUsesCodexRuntime(cfg)).toBe(true);
+    expect(ensureCodexRuntimePlugin(cfg)).toBe(true);
+    expect(cfg.plugins.allow).toContain("codex");
+  });
 });

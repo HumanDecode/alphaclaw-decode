@@ -161,6 +161,8 @@ describe("server/watchdog-notify", () => {
     const clawCmd = vi.fn(async () => ({ ok: true, stdout: "sent", stderr: "" }));
     const notifier = createWatchdogNotifier({
       clawCmd,
+      fsImpl: buildCredentialsFsMock({}),
+      openclawDir: "/tmp/openclaw",
       readEnvFile: () => [
         { key: "WHATSAPP_OWNER_NUMBER", value: "+15551234567" },
       ],
@@ -197,6 +199,8 @@ describe("server/watchdog-notify", () => {
     }));
     const notifier = createWatchdogNotifier({
       clawCmd,
+      fsImpl: buildCredentialsFsMock({}),
+      openclawDir: "/tmp/openclaw",
       readEnvFile: () => [
         { key: "WHATSAPP_OWNER_NUMBER", value: "+15551234567" },
       ],
