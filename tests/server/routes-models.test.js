@@ -356,13 +356,43 @@ describe("server/routes/models", () => {
       configuredModels: {
         "openai-codex/gpt-5.3-codex": {},
       },
-    });
+    }, undefined);
     expect(deps.authProfiles.syncConfigAuthReferencesForAgent).toHaveBeenCalledWith(
       undefined,
     );
     expect(deps.shellCmd).toHaveBeenCalledWith(
       'alphaclaw git-sync -m "models: update config" -f "openclaw.json"',
       { timeout: 30000 },
+    );
+  });
+
+  it("reads and writes the selected agent model scope", async () => {
+    const deps = createModelDeps();
+    deps.shellCmd.mockResolvedValue("");
+    deps.authProfiles.getModelConfig.mockReturnValue({
+      primary: "anthropic/claude-opus-4-8",
+      configuredModels: { "anthropic/claude-opus-4-8": {} },
+    });
+    const app = createApp(deps);
+
+    const readRes = await request(app).get("/api/models/config?agentId=remy");
+    expect(readRes.status).toBe(200);
+    expect(readRes.body.primary).toBe("anthropic/claude-opus-4-8");
+    expect(deps.authProfiles.getModelConfig).toHaveBeenCalledWith("remy");
+
+    const writeRes = await request(app)
+      .put("/api/models/config?agentId=remy")
+      .send({
+        primary: "openai/gpt-5.6-sol",
+        configuredModels: { "openai/gpt-5.6-sol": {} },
+      });
+    expect(writeRes.status).toBe(200);
+    expect(deps.authProfiles.setModelConfig).toHaveBeenCalledWith(
+      {
+        primary: "openai/gpt-5.6-sol",
+        configuredModels: { "openai/gpt-5.6-sol": {} },
+      },
+      "remy",
     );
   });
 

@@ -322,6 +322,57 @@ describe("server/auth-profiles", () => {
     expect(config.gateway.port).toBe(18789);
   });
 
+  it("reads and writes canonical per-agent model overrides", () => {
+    const configPath = path.join(tmpDir, ".openclaw", "openclaw.json");
+    const config = readJson("openclaw.json");
+    config.agents.entries = {
+      main: { model: { primary: "anthropic/claude-opus-4-8" } },
+      development: { model: { primary: "openai/gpt-5.6-sol" } },
+    };
+    fs.writeFileSync(configPath, JSON.stringify(config, null, 2));
+
+    expect(ap.getModelConfig("main").primary).toBe(
+      "anthropic/claude-opus-4-8",
+    );
+    expect(ap.getModelConfig("development").primary).toBe(
+      "openai/gpt-5.6-sol",
+    );
+
+    ap.setModelConfig(
+      { primary: "anthropic/claude-sonnet-5" },
+      "development",
+    );
+
+    const updated = readJson("openclaw.json");
+    expect(updated.agents.entries.development.model.primary).toBe(
+      "anthropic/claude-sonnet-5",
+    );
+    expect(updated.agents.entries.main.model.primary).toBe(
+      "anthropic/claude-opus-4-8",
+    );
+    expect(updated.agents.defaults.model.primary).toBe(
+      "anthropic/claude-opus-4-6",
+    );
+  });
+
+  it("supports legacy string model overrides and rejects unknown agents", () => {
+    const configPath = path.join(tmpDir, ".openclaw", "openclaw.json");
+    const config = readJson("openclaw.json");
+    config.agents.entries = {
+      main: { model: "anthropic/claude-opus-4-8" },
+    };
+    fs.writeFileSync(configPath, JSON.stringify(config, null, 2));
+
+    expect(ap.getModelConfig("main").primary).toBe(
+      "anthropic/claude-opus-4-8",
+    );
+    ap.setModelConfig({ primary: "openai/gpt-5.6-sol" }, "main");
+    expect(readJson("openclaw.json").agents.entries.main.model).toEqual({
+      primary: "openai/gpt-5.6-sol",
+    });
+    expect(() => ap.getModelConfig("missing")).toThrow("Unknown agent: missing");
+  });
+
   it("preserves the Codex runtime marker when model settings are saved", () => {
     ap.upsertCodexProfile({
       access: "codex-access",
