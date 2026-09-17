@@ -209,9 +209,11 @@
 
 .sidebar-brand-copy {
   display: inline-flex;
-  align-items: center;
+  flex-direction: column;
+  align-items: flex-start;
   min-width: 0;
-  gap: 7px;
+  gap: 1px;
+  line-height: 1.2;
 }
 
 .sidebar-instance-name {
@@ -221,10 +223,6 @@
   white-space: nowrap;
   color: var(--accent);
   text-transform: uppercase;
-}
-
-.sidebar-brand-separator {
-  color: var(--text-dim);
 }
 
 .sidebar-label {
