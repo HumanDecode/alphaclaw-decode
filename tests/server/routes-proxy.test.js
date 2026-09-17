@@ -25,6 +25,11 @@ const createApp = ({
   globalJsonLimit = "5mb",
   openAiCompatApiEnabled = true,
   openAiCompatApiThrottle = null,
+  proxy = {
+    web: vi.fn((_req, res) =>
+      res.status(502).json({ error: "Unexpected proxy" }),
+    ),
+  },
 }) => {
   const app = express();
   const openAiParser = express.json({ limit: openAiJsonLimit });
@@ -37,9 +42,7 @@ const createApp = ({
   app.use(express.json({ limit: globalJsonLimit }));
   registerProxyRoutes({
     app,
-    proxy: {
-      web: vi.fn((_req, res) => res.status(502).json({ error: "Unexpected proxy" })),
-    },
+    proxy,
     getGatewayUrl: () => gatewayUrl,
     getGatewayToken: () => gatewayToken,
     isOpenAiCompatApiEnabled: () => openAiCompatApiEnabled,
@@ -51,6 +54,37 @@ const createApp = ({
   });
   return app;
 };
+
+describe("server/routes/proxy Control UI mount", () => {
+  it.each([
+    "/openclaw",
+    "/openclaw/",
+    "/openclaw/fonts/jetbrains-mono.css?v=2026.9.3",
+    "/openclaw/app/service-worker.js?v=2026.9.3",
+    "/openclaw/provider-icons/ProviderIcon-code.svg",
+    "/openclaw/__openclaw__/plugin-icon/anthropic",
+  ])(
+    "preserves the configured /openclaw base path for %s",
+    async (requestPath) => {
+      const seenUrls = [];
+      const proxy = {
+        web: vi.fn((req, res) => {
+          seenUrls.push(req.url);
+          res.status(204).end();
+        }),
+      };
+      const app = createApp({
+        gatewayUrl: "http://127.0.0.1:18789",
+        proxy,
+      });
+
+      const res = await request(app).get(requestPath);
+
+      expect(res.status).toBe(204);
+      expect(seenUrls).toEqual([requestPath]);
+    },
+  );
+});
 
 const createApiAuthThrottle = ({
   clientKey = "test-client",

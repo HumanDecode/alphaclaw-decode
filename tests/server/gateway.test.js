@@ -412,6 +412,7 @@ describe("server/gateway restart behavior", () => {
       expect.any(String),
     );
     expect(currentConfig.gateway.trustedProxies).toEqual(["127.0.0.1"]);
+    expect(currentConfig.gateway.controlUi.basePath).toBe("/openclaw");
     expect(currentConfig.gateway.controlUi.allowedOrigins).toEqual([
       "https://setup.example.com",
     ]);
@@ -423,6 +424,7 @@ describe("server/gateway restart behavior", () => {
       gateway: {
         trustedProxies: ["127.0.0.1"],
         controlUi: {
+          basePath: "/openclaw",
           allowedOrigins: ["https://existing.example.com"],
         },
       },
