@@ -165,8 +165,7 @@ The built-in watchdog monitors gateway health and recovers from failures automat
 | `PORT`                            | Optional | Server port (default `3000`)                       |
 | `ALPHACLAW_ROOT_DIR`              | Optional | Data directory (default `/data`)                   |
 | `ALPHACLAW_INSTANCE_NAME`         | Optional | Deployment label shown on login and in the sidebar |
-| `ALPHACLAW_LOGO_URL`              | Optional | HTTPS or same-origin path for the deployment logo  |
-| `ALPHACLAW_FAVICON_URL`           | Optional | HTTPS or same-origin path for the favicon; defaults to the logo |
+| `ALPHACLAW_FAVICON_URL`           | Optional | HTTPS or same-origin path for the browser and sidebar icon |
 | `ALPHACLAW_SKIP_SYSTEM_CRON_INSTALL` | Optional | Skip writes to `/etc/cron.d` while keeping cron config (`true`/`false`); the managed hourly script still exits when sync is disabled |
 | `ALPHACLAW_GIT_SHIM_PATH`         | Optional | Install the managed git auth shim at this path and prepend its directory to runtime `PATH` (default `/usr/local/bin/git`) |
 | `ALPHACLAW_GIT_ASKPASS_PATH`      | Optional | Install the git askpass helper at this path (default `$TMPDIR/alphaclaw-git-askpass.sh`) |

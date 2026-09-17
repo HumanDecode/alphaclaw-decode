@@ -215,16 +215,16 @@
 }
 
 .sidebar-instance-name {
-  max-width: 96px;
+  max-width: 120px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  padding: 1px 6px;
-  border: 1px solid var(--border-strong);
-  border-radius: 999px;
-  color: var(--text);
-  font-size: 10px;
-  line-height: 16px;
+  color: var(--accent);
+  text-transform: uppercase;
+}
+
+.sidebar-brand-separator {
+  color: var(--text-dim);
 }
 
 .sidebar-label {
