@@ -47,13 +47,12 @@ describe("server/routes/auth", () => {
   afterEach(() => {
     delete process.env.SETUP_PASSWORD;
     delete process.env.ALPHACLAW_INSTANCE_NAME;
-    delete process.env.ALPHACLAW_LOGO_URL;
     delete process.env.ALPHACLAW_FAVICON_URL;
   });
 
   it("serves public deployment branding for the login screen", async () => {
     process.env.ALPHACLAW_INSTANCE_NAME = "Edna";
-    process.env.ALPHACLAW_LOGO_URL = "https://assets.example.com/edna.png";
+    process.env.ALPHACLAW_FAVICON_URL = "https://assets.example.com/edna.png";
     const { app } = createTestApp({ setupPassword: "secret" });
 
     const res = await request(app).get("/api/auth/branding");
@@ -63,7 +62,7 @@ describe("server/routes/auth", () => {
       ok: true,
       branding: expect.objectContaining({
         instanceName: "Edna",
-        logoUrl: "https://assets.example.com/edna.png",
+        faviconUrl: "https://assets.example.com/edna.png",
         documentTitle: "Edna · AlphaClaw",
       }),
     });

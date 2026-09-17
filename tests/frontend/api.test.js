@@ -42,7 +42,7 @@ describe("frontend/api", () => {
   it("fetchBranding loads public instance branding", async () => {
     const payload = {
       ok: true,
-      branding: { instanceName: "Edna", logoUrl: "/branding/edna.png" },
+      branding: { instanceName: "Edna", faviconUrl: "/branding/edna.png" },
     };
     global.fetch.mockResolvedValue(mockJsonResponse(200, payload));
     const api = await loadApiModule();
