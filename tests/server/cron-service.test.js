@@ -289,4 +289,183 @@ describe("server/cron-service", () => {
       fs.rmSync(openclawDir, { recursive: true, force: true });
     }
   });
+
+  it("reads cron run history through the OpenClaw gateway", async () => {
+    const openclawDir = createOpenclawDirWithCronJobs([]);
+    const gatewayPage = {
+      entries: [
+        {
+          ts: 1773291600000,
+          jobId: "job-a",
+          action: "finished",
+          status: "ok",
+          durationMs: 1200,
+        },
+      ],
+      total: 1,
+      offset: 0,
+      limit: 20,
+      hasMore: false,
+      nextOffset: null,
+    };
+    const clawCmd = vi.fn();
+    const requestGateway = vi.fn().mockResolvedValue(gatewayPage);
+    try {
+      const cronService = createCronService({
+        clawCmd,
+        OPENCLAW_DIR: openclawDir,
+        getSessionUsageByKeyPattern: vi.fn(() => ({})),
+        requestGateway,
+      });
+
+      const runs = await cronService.getJobRuns({ jobId: "job-a", limit: 20 });
+
+      expect(runs.entries).toEqual(gatewayPage.entries);
+      expect(runs.total).toBe(1);
+      expect(requestGateway).toHaveBeenCalledWith(
+        "cron.runs",
+        expect.objectContaining({ jobId: "job-a", scope: "job", limit: 20 }),
+        30000,
+      );
+      expect(clawCmd).not.toHaveBeenCalled();
+    } finally {
+      fs.rmSync(openclawDir, { recursive: true, force: true });
+    }
+  });
+
+  it("falls back to legacy JSONL run history when the gateway is unavailable", async () => {
+    const openclawDir = createOpenclawDirWithCronJobs([]);
+    const runsDir = path.join(openclawDir, "cron", "runs");
+    fs.mkdirSync(runsDir, { recursive: true });
+    fs.writeFileSync(
+      path.join(runsDir, "job-a.jsonl"),
+      `${JSON.stringify({
+        ts: 1773291600000,
+        jobId: "job-a",
+        action: "finished",
+        status: "ok",
+      })}\n`,
+      "utf8",
+    );
+    try {
+      const cronService = createCronService({
+        clawCmd: vi.fn(),
+        OPENCLAW_DIR: openclawDir,
+        getSessionUsageByKeyPattern: vi.fn(() => ({})),
+        requestGateway: vi.fn().mockRejectedValue(new Error("gateway unavailable")),
+      });
+
+      const runs = await cronService.getJobRuns({ jobId: "job-a" });
+
+      expect(runs.entries).toEqual([
+        expect.objectContaining({ jobId: "job-a", status: "ok" }),
+      ]);
+    } finally {
+      fs.rmSync(openclawDir, { recursive: true, force: true });
+    }
+  });
+
+  it("paginates gateway history when calculating run trends", async () => {
+    const openclawDir = createOpenclawDirWithCronJobs([]);
+    const nowMs = Date.now();
+    const requestGateway = vi
+      .fn()
+      .mockResolvedValueOnce({
+        entries: [
+          {
+            ts: nowMs - 60 * 60 * 1000,
+            jobId: "job-a",
+            action: "finished",
+            status: "ok",
+            durationMs: 1000,
+          },
+        ],
+        total: 2,
+        offset: 0,
+        limit: 200,
+        hasMore: true,
+        nextOffset: 1,
+      })
+      .mockResolvedValueOnce({
+        entries: [
+          {
+            ts: nowMs - 2 * 60 * 60 * 1000,
+            jobId: "job-a",
+            action: "finished",
+            status: "error",
+            durationMs: 3000,
+          },
+        ],
+        total: 2,
+        offset: 1,
+        limit: 200,
+        hasMore: false,
+        nextOffset: null,
+      });
+    try {
+      const cronService = createCronService({
+        clawCmd: vi.fn(),
+        OPENCLAW_DIR: openclawDir,
+        getSessionUsageByKeyPattern: vi.fn(() => ({})),
+        requestGateway,
+      });
+
+      const trends = await cronService.getJobRunTrends({
+        jobId: "job-a",
+        range: "24h",
+      });
+
+      expect(trends.points.reduce((total, point) => total + point.totalRuns, 0)).toBe(2);
+      expect(trends.points.reduce((total, point) => total + point.ok, 0)).toBe(1);
+      expect(trends.points.reduce((total, point) => total + point.error, 0)).toBe(1);
+      expect(requestGateway).toHaveBeenCalledTimes(2);
+      expect(requestGateway.mock.calls[0][1]).toEqual(
+        expect.objectContaining({ jobId: "job-a", offset: 0, limit: 200 }),
+      );
+      expect(requestGateway.mock.calls[1][1]).toEqual(
+        expect.objectContaining({ jobId: "job-a", offset: 1, limit: 200 }),
+      );
+    } finally {
+      fs.rmSync(openclawDir, { recursive: true, force: true });
+    }
+  });
+
+  it("groups gateway run history for the all-jobs overview", async () => {
+    const openclawDir = createOpenclawDirWithCronJobs([
+      { id: "job-a", name: "Job A", enabled: true, state: {} },
+      { id: "job-b", name: "Job B", enabled: true, state: {} },
+    ]);
+    const requestGateway = vi.fn().mockResolvedValue({
+      entries: [
+        { ts: 300, jobId: "job-a", action: "finished", status: "ok" },
+        { ts: 200, jobId: "job-b", action: "finished", status: "error" },
+        { ts: 100, jobId: "job-a", action: "finished", status: "skipped" },
+      ],
+      total: 3,
+      offset: 0,
+      limit: 200,
+      hasMore: false,
+      nextOffset: null,
+    });
+    try {
+      const cronService = createCronService({
+        clawCmd: vi.fn(),
+        OPENCLAW_DIR: openclawDir,
+        getSessionUsageByKeyPattern: vi.fn(() => ({})),
+        requestGateway,
+      });
+
+      const runs = await cronService.getBulkJobRuns({ limitPerJob: 20 });
+
+      expect(runs.byJobId["job-a"].entries).toHaveLength(2);
+      expect(runs.byJobId["job-b"].entries).toHaveLength(1);
+      expect(requestGateway).toHaveBeenCalledWith(
+        "cron.runs",
+        expect.objectContaining({ scope: "all", offset: 0, limit: 200 }),
+        30000,
+      );
+    } finally {
+      fs.rmSync(openclawDir, { recursive: true, force: true });
+    }
+  });
 });
