@@ -1478,8 +1478,11 @@ describe("server/agents/service", () => {
     expect(writeEnvFile.mock.invocationCallOrder[0]).toBeLessThan(
       restartGateway.mock.invocationCallOrder[0],
     );
-    expect(clawCmd.mock.invocationCallOrder[clawCmd.mock.invocationCallOrder.length - 1]).toBeLessThan(
-      restartGateway.mock.invocationCallOrder[0],
+    expect(restartGateway.mock.invocationCallOrder[0]).toBeLessThan(
+      fsMock.writeFileSync.mock.invocationCallOrder[0],
+    );
+    expect(restartGateway.mock.invocationCallOrder[0]).toBeLessThan(
+      clawCmd.mock.invocationCallOrder[clawCmd.mock.invocationCallOrder.length - 1],
     );
     expect(clawCmd).toHaveBeenNthCalledWith(
       1,
@@ -1739,6 +1742,7 @@ describe("server/agents/service", () => {
     const initialEnvVars = [{ key: "OPENAI_API_KEY", value: "sk-test" }];
     const writeEnvFile = vi.fn();
     const reloadEnv = vi.fn();
+    const restartGateway = vi.fn(async () => {});
     const clawCmd = vi.fn(async (command) => {
       if (String(command).startsWith("agents bind")) {
         return { ok: false, stdout: "", stderr: "CLI bind failed" };
@@ -1751,7 +1755,7 @@ describe("server/agents/service", () => {
       readEnvFile: vi.fn(() => initialEnvVars),
       writeEnvFile,
       reloadEnv,
-      restartGateway: vi.fn(async () => {}),
+      restartGateway,
       clawCmd,
     });
 
@@ -1771,6 +1775,7 @@ describe("server/agents/service", () => {
     ]);
     expect(writeEnvFile).toHaveBeenNthCalledWith(2, initialEnvVars);
     expect(reloadEnv).toHaveBeenCalledTimes(2);
+    expect(restartGateway).toHaveBeenCalledTimes(2);
     expect(fsMock.readConfig()).toEqual({
       agents: {
         list: [{ id: "main", default: true }],

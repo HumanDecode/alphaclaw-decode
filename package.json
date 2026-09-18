@@ -1,7 +1,7 @@
 {
   "name": "@chrysb/alphaclaw",
   "version": "0.9.36",
-  "decodeVersion": "0.4.0",
+  "decodeVersion": "0.4.1",
   "publishConfig": {
     "access": "public"
   },
