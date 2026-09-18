@@ -50,6 +50,7 @@ describe("server/chat-ws", () => {
       connectParams: null,
       headers: null,
       historyParams: null,
+      cronRunsParams: null,
     };
     gatewayServer = new WebSocketServer({ host: "127.0.0.1", port: 0 });
     await waitForListening(gatewayServer);
@@ -82,6 +83,18 @@ describe("server/chat-ws", () => {
               payload: { messages: [] },
             }),
           );
+          return;
+        }
+        if (frame.method === "cron.runs") {
+          captured.cronRunsParams = frame.params;
+          socket.send(
+            JSON.stringify({
+              type: "res",
+              id: frame.id,
+              ok: true,
+              payload: { entries: [], total: 0 },
+            }),
+          );
         }
       });
     });
@@ -99,8 +112,14 @@ describe("server/chat-ws", () => {
     });
 
     const history = await service.fetchHistory("agent:main:main");
+    const cronRuns = await service.requestGateway("cron.runs", {
+      scope: "job",
+      jobId: "job-a",
+      limit: 20,
+    });
 
     expect(history).toEqual({ messages: [], rawHistory: { messages: [] } });
+    expect(cronRuns).toEqual({ entries: [], total: 0 });
     expect(captured.headers.origin).toBeUndefined();
     expect(captured.connectParams).toMatchObject({
       client: {
@@ -116,6 +135,11 @@ describe("server/chat-ws", () => {
     expect(captured.historyParams).toEqual({
       sessionKey: "agent:main:main",
       limit: 200,
+    });
+    expect(captured.cronRunsParams).toEqual({
+      scope: "job",
+      jobId: "job-a",
+      limit: 20,
     });
   });
 });
