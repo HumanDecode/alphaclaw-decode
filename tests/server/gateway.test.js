@@ -114,6 +114,14 @@ describe("server/gateway restart behavior", () => {
       expect.objectContaining({ env: expect.any(Object) }),
     );
     expect(managedChild.kill).toHaveBeenCalledWith("SIGTERM");
+    expect(execSyncMock).toHaveBeenCalledWith(
+      "openclaw gateway stop --force",
+      expect.objectContaining({
+        env: expect.any(Object),
+        timeout: 15000,
+        encoding: "utf8",
+      }),
+    );
   });
 
   it("exports the durable OpenClaw state dir in gateway env", () => {
@@ -197,6 +205,49 @@ describe("server/gateway restart behavior", () => {
       "openclaw gateway --force",
       expect.anything(),
     );
+    expect(execSyncMock).toHaveBeenCalledWith(
+      "openclaw gateway stop --force",
+      expect.objectContaining({
+        env: expect.any(Object),
+        timeout: 15000,
+        encoding: "utf8",
+      }),
+    );
+  });
+
+  it("force-stops OpenClaw synchronously before shutting down", async () => {
+    const managedChild = createChild();
+    const execSyncMock = vi.fn(() => "");
+    childProcess.spawn = vi.fn(() => managedChild);
+    childProcess.execSync = execSyncMock;
+    fs.existsSync = vi.fn(() => true);
+    net.createConnection = vi.fn(() => createSocket(false));
+    delete require.cache[modulePath];
+    const gateway = require(modulePath);
+    fs.readFileSync = vi.fn(() =>
+      JSON.stringify({
+        agents: {
+          defaults: {
+            model: {
+              primary: "openai/gpt-5.1-codex",
+            },
+          },
+        },
+      }),
+    );
+
+    await gateway.startGateway();
+    gateway.shutdownGateway();
+
+    expect(execSyncMock).toHaveBeenCalledWith(
+      "openclaw gateway stop --force",
+      expect.objectContaining({
+        env: expect.any(Object),
+        timeout: 15000,
+        encoding: "utf8",
+      }),
+    );
+    expect(managedChild.kill).toHaveBeenCalledWith("SIGTERM");
   });
 
   it("retries channel plugin preflight after cleaning stale install stages", () => {
