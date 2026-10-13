@@ -96,7 +96,7 @@ describe("server/alphaclaw-version", () => {
       expect.objectContaining({
         ok: true,
         currentVersion: expect.any(String),
-        currentDecodeVersion: "0.4.1",
+        currentDecodeVersion: "0.5.0",
         currentOpenclawVersion: "2026.4.10",
         latestVersion: "99.0.0",
         hasUpdate: true,
