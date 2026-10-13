@@ -43,15 +43,33 @@ const createSocket = (isRunning) => {
   };
 };
 
-const createChild = () => ({
-  pid: 1234,
-  stdout: { on: vi.fn() },
-  stderr: { on: vi.fn() },
-  on: vi.fn(),
-  kill: vi.fn(),
-  exitCode: null,
-  killed: false,
-});
+const createChild = ({ pid = 1234, onKill = () => {} } = {}) => {
+  const handlers = new Map();
+  const child = {
+    pid,
+    stdout: { on: vi.fn() },
+    stderr: { on: vi.fn() },
+    on: vi.fn((event, handler) => {
+      const current = handlers.get(event) || [];
+      current.push(handler);
+      handlers.set(event, current);
+      return child;
+    }),
+    kill: vi.fn((signal = "SIGTERM") => {
+      child.killed = true;
+      onKill(signal);
+      setImmediate(() => {
+        child.signalCode = signal;
+        for (const handler of handlers.get("exit") || []) handler(null, signal);
+      });
+      return true;
+    }),
+    exitCode: null,
+    signalCode: null,
+    killed: false,
+  };
+  return child;
+};
 
 describe("server/gateway restart behavior", () => {
   afterEach(() => {
@@ -68,17 +86,25 @@ describe("server/gateway restart behavior", () => {
   });
 
   it("always cold-starts when the gateway port is listening", async () => {
-    const managedChild = createChild();
-    const restartSupervisor = createChild();
+    let gatewayPortOpen = false;
+    const managedChild = createChild({
+      pid: 1234,
+      onKill: () => {
+        gatewayPortOpen = false;
+      },
+    });
+    const restartSupervisor = createChild({ pid: 5678 });
     const spawnMock = vi
       .fn()
       .mockReturnValueOnce(managedChild)
-      .mockReturnValueOnce(restartSupervisor);
+      .mockImplementationOnce(() => {
+        gatewayPortOpen = true;
+        return restartSupervisor;
+      });
     const execSyncMock = vi.fn(() => "");
     childProcess.spawn = spawnMock;
     childProcess.execSync = execSyncMock;
     fs.existsSync = vi.fn(() => true);
-    let gatewayPortOpen = false;
     net.createConnection = vi.fn(() => createSocket(() => gatewayPortOpen));
     delete require.cache[modulePath];
     const gateway = require(modulePath);
@@ -110,18 +136,11 @@ describe("server/gateway restart behavior", () => {
     expect(spawnMock).toHaveBeenNthCalledWith(
       2,
       "openclaw",
-      ["gateway", "--force"],
+      ["gateway", "run"],
       expect.objectContaining({ env: expect.any(Object) }),
     );
     expect(managedChild.kill).toHaveBeenCalledWith("SIGTERM");
-    expect(execSyncMock).toHaveBeenCalledWith(
-      "openclaw gateway stop --force",
-      expect.objectContaining({
-        env: expect.any(Object),
-        timeout: 15000,
-        encoding: "utf8",
-      }),
-    );
+    expect(execSyncMock).not.toHaveBeenCalled();
   });
 
   it("exports the durable OpenClaw state dir in gateway env", () => {
@@ -163,13 +182,16 @@ describe("server/gateway restart behavior", () => {
   });
 
   it("uses force cold start when the gateway port is not listening", async () => {
+    let gatewayPortOpen = false;
     const restartSupervisor = createChild();
-    const spawnMock = vi.fn(() => restartSupervisor);
+    const spawnMock = vi.fn(() => {
+      gatewayPortOpen = true;
+      return restartSupervisor;
+    });
     const execSyncMock = vi.fn(() => "");
     childProcess.spawn = spawnMock;
     childProcess.execSync = execSyncMock;
     fs.existsSync = vi.fn(() => true);
-    let gatewayPortOpen = false;
     net.createConnection = vi.fn(() => createSocket(() => gatewayPortOpen));
     delete require.cache[modulePath];
     const gateway = require(modulePath);
@@ -186,9 +208,7 @@ describe("server/gateway restart behavior", () => {
     );
 
     const reloadEnv = vi.fn();
-    const restartPromise = gateway.restartGateway(reloadEnv);
-    gatewayPortOpen = true;
-    await restartPromise;
+    await gateway.restartGateway(reloadEnv);
 
     expect(reloadEnv).toHaveBeenCalledTimes(1);
     expect(execSyncMock).not.toHaveBeenCalledWith(
@@ -198,24 +218,17 @@ describe("server/gateway restart behavior", () => {
     expect(spawnMock).toHaveBeenCalledTimes(1);
     expect(spawnMock).toHaveBeenCalledWith(
       "openclaw",
-      ["gateway", "--force"],
+      ["gateway", "run"],
       expect.objectContaining({ env: expect.any(Object) }),
     );
     expect(execSyncMock).not.toHaveBeenCalledWith(
       "openclaw gateway --force",
       expect.anything(),
     );
-    expect(execSyncMock).toHaveBeenCalledWith(
-      "openclaw gateway stop --force",
-      expect.objectContaining({
-        env: expect.any(Object),
-        timeout: 15000,
-        encoding: "utf8",
-      }),
-    );
+    expect(execSyncMock).not.toHaveBeenCalled();
   });
 
-  it("force-stops OpenClaw synchronously before shutting down", async () => {
+  it("waits for the managed OpenClaw child before shutting down", async () => {
     const managedChild = createChild();
     const execSyncMock = vi.fn(() => "");
     childProcess.spawn = vi.fn(() => managedChild);
@@ -237,16 +250,9 @@ describe("server/gateway restart behavior", () => {
     );
 
     await gateway.startGateway();
-    gateway.shutdownGateway();
+    await gateway.shutdownGateway();
 
-    expect(execSyncMock).toHaveBeenCalledWith(
-      "openclaw gateway stop --force",
-      expect.objectContaining({
-        env: expect.any(Object),
-        timeout: 15000,
-        encoding: "utf8",
-      }),
-    );
+    expect(execSyncMock).not.toHaveBeenCalled();
     expect(managedChild.kill).toHaveBeenCalledWith("SIGTERM");
   });
 
@@ -313,14 +319,26 @@ describe("server/gateway restart behavior", () => {
   });
 
   it("marks managed child exit as expected before force restart", async () => {
-    const child = createChild();
-    const spawnMock = vi.fn(() => child);
+    let gatewayPortOpen = false;
+    const child = createChild({
+      pid: 1234,
+      onKill: () => {
+        gatewayPortOpen = false;
+      },
+    });
+    const replacement = createChild({ pid: 5678 });
+    const spawnMock = vi
+      .fn()
+      .mockReturnValueOnce(child)
+      .mockImplementationOnce(() => {
+        gatewayPortOpen = true;
+        return replacement;
+      });
     const execSyncMock = vi.fn(() => "");
     const exitHandler = vi.fn();
     childProcess.spawn = spawnMock;
     childProcess.execSync = execSyncMock;
     fs.existsSync = vi.fn(() => true);
-    let gatewayPortOpen = false;
     net.createConnection = vi.fn(() => createSocket(() => gatewayPortOpen));
     delete require.cache[modulePath];
     const gateway = require(modulePath);
@@ -338,23 +356,57 @@ describe("server/gateway restart behavior", () => {
     );
 
     await gateway.startGateway();
-    const restartPromise = gateway.restartGateway(vi.fn());
     gatewayPortOpen = true;
-    await restartPromise;
+    await gateway.restartGateway(vi.fn());
 
     const exitRegistration = child.on.mock.calls.find((call) => call[0] === "exit");
     expect(exitRegistration).toBeTruthy();
 
-    const [, onExit] = exitRegistration;
-    onExit(0, null);
-
     expect(exitHandler).toHaveBeenCalledWith(
       expect.objectContaining({
-        code: 0,
-        signal: null,
+        code: null,
+        signal: "SIGTERM",
         expectedExit: true,
       }),
     );
+  });
+
+  it("retains the replacement child across consecutive restarts", async () => {
+    let gatewayPortOpen = false;
+    const makeManagedChild = (pid) =>
+      createChild({
+        pid,
+        onKill: () => {
+          gatewayPortOpen = false;
+        },
+      });
+    const first = makeManagedChild(1001);
+    const second = makeManagedChild(1002);
+    const third = makeManagedChild(1003);
+    const children = [first, second, third];
+    childProcess.spawn = vi.fn(() => {
+      const child = children.shift();
+      gatewayPortOpen = true;
+      return child;
+    });
+    childProcess.execSync = vi.fn(() => "");
+    fs.existsSync = vi.fn(() => true);
+    net.createConnection = vi.fn(() => createSocket(() => gatewayPortOpen));
+    delete require.cache[modulePath];
+    const gateway = require(modulePath);
+    fs.readFileSync = vi.fn(() =>
+      JSON.stringify({ agents: { defaults: { model: { primary: "openai/gpt-5.1-codex" } } } }),
+    );
+
+    await gateway.startGateway();
+    await gateway.restartGateway(vi.fn());
+    await gateway.restartGateway(vi.fn());
+
+    expect(first.kill).toHaveBeenCalledWith("SIGTERM");
+    expect(second.kill).toHaveBeenCalledWith("SIGTERM");
+    expect(third.kill).not.toHaveBeenCalled();
+    expect(childProcess.spawn).toHaveBeenCalledTimes(3);
+    expect(childProcess.execSync).not.toHaveBeenCalled();
   });
 
   it("does not treat auth-only openclaw config as onboarded", () => {
