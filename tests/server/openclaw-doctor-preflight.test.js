@@ -123,6 +123,7 @@ describe("server/openclaw-doctor-preflight", () => {
       toVersion: "2026.9.3",
     });
     expect(second).toMatchObject({ ran: false, changed: false });
+    expect(execFileSyncImpl.mock.calls[0][2].timeout).toBe(900_000);
     expect(execFileSyncImpl).toHaveBeenCalledTimes(2);
     expect(execFileSyncImpl).toHaveBeenNthCalledWith(
       1,
