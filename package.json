@@ -1,7 +1,7 @@
 {
   "name": "@chrysb/alphaclaw",
   "version": "0.9.36",
-  "decodeVersion": "0.5.0",
+  "decodeVersion": "0.4.1",
   "publishConfig": {
     "access": "public"
   },
@@ -36,7 +36,7 @@
   "dependencies": {
     "express": "^5.2.1",
     "http-proxy": "^1.18.1",
-    "openclaw": "2026.10.2",
+    "openclaw": "2026.9.3",
     "ws": "^8.19.0"
   },
   "devDependencies": {

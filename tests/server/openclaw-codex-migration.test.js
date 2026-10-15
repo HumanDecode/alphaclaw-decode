@@ -63,7 +63,7 @@ describe("server/openclaw-codex-migration", () => {
     expect(cfg.agents.defaults.models).toEqual({
       "openai/gpt-5.5": { agentRuntime: { id: "codex" } },
     });
-    expect(cfg.auth.profiles["openai:chatgpt-codex-cli"]).toEqual({
+    expect(cfg.auth.profiles["openai:codex-cli"]).toEqual({
       provider: "openai",
       mode: "oauth",
     });
