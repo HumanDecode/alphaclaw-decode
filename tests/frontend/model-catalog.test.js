@@ -34,7 +34,7 @@ describe("frontend/model-catalog", () => {
       getInitialOnboardingModelKey({
         catalog: [
           { key: "openai-codex/gpt-5.4", label: "GPT-5.4" },
-          { key: "anthropic/claude-opus-4-8", label: "Opus 4.8" },
+          { key: "openai/gpt-6.1-sol", label: "GPT-6.1 Sol" },
           { key: "anthropic/claude-opus-5-5", label: "Opus 5.5" },
         ],
       }),
@@ -51,10 +51,10 @@ describe("frontend/model-catalog", () => {
         catalog: [
           { key: "openai-codex/gpt-5.4", label: "GPT-5.4" },
           { key: "anthropic/claude-opus-4-7", label: "Opus 4.7" },
-          { key: "anthropic/claude-opus-4-8", label: "Opus 4.8" },
+          { key: "openai/gpt-6.1-sol", label: "GPT-6.1 Sol" },
         ],
       }),
-    ).toBe("anthropic/claude-opus-4-8");
+    ).toBe("openai/gpt-6.1-sol");
   });
 
   it("reports whether the catalog is still refreshing", async () => {

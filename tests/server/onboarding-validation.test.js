@@ -81,6 +81,7 @@ describe("onboarding/validation", () => {
 
   it("accepts current canonical Codex models with Codex OAuth", () => {
     for (const modelKey of [
+      "openai/gpt-6.1-sol",
       "openai/gpt-6-astra",
       "openai/gpt-6-sol",
       "openai/gpt-6-luna",
