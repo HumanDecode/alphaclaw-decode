@@ -455,7 +455,7 @@ describe("server/openclaw-doctor-preflight", () => {
   });
 
   it(
-    "migrates a versionless valid 2026.7.1 config and validates it with OpenClaw 2026.10.2",
+    "migrates a versionless valid 2026.7.1 config and validates it with OpenClaw 2026.10.4",
     () => {
       const stateDir = fs.mkdtempSync(
         path.join(os.tmpdir(), "alphaclaw-versionless-config-"),
@@ -495,9 +495,9 @@ describe("server/openclaw-doctor-preflight", () => {
         ran: true,
         changed: true,
         fromVersion: "unknown",
-        toVersion: "2026.10.2",
+        toVersion: "2026.10.4",
       });
-      expect(migrated.meta.lastTouchedVersion).toBe("2026.10.2");
+      expect(migrated.meta.lastTouchedVersion).toBe("2026.10.4");
       expect(migrated.meta.lastTouchedAt).toBeUndefined();
       expect(migrated.commands.ownerDisplay).toBeUndefined();
       expect(migrated.gateway.tailscale.resetOnExit).toBeUndefined();
@@ -518,7 +518,7 @@ describe("server/openclaw-doctor-preflight", () => {
   );
 
   it(
-    "migrates a valid 2026.7.1 config and validates it with OpenClaw 2026.10.2",
+    "migrates a valid 2026.7.1 config and validates it with OpenClaw 2026.10.4",
     () => {
       const stateDir = fs.mkdtempSync(
         path.join(os.tmpdir(), "alphaclaw-legacy-config-"),
@@ -550,7 +550,7 @@ describe("server/openclaw-doctor-preflight", () => {
         ran: true,
         changed: true,
         fromVersion: "2026.7.1",
-        toVersion: "2026.10.2",
+        toVersion: "2026.10.4",
       });
       expect(fs.existsSync(`${configPath}.bak`)).toBe(true);
       expect(migrated.meta.lastTouchedAt).toBeUndefined();
