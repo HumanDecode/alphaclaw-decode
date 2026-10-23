@@ -28,32 +28,39 @@ describe("frontend/model-config", () => {
   it("picks featured models in defined preference order", async () => {
     const modelConfig = await loadModelConfig();
     const featured = modelConfig.getFeaturedModels([
-      { key: "google/gemini-3.1-pro-preview", label: "Gemini 3.1 Pro" },
+      { key: "google/gemini-3.8-flash", label: "Gemini 3.8 Flash" },
+      { key: "anthropic/claude-sonnet-5-5", label: "Sonnet 5.5" },
+      { key: "anthropic/claude-haiku-5-5", label: "Haiku 5.5" },
+      { key: "openai/gpt-6.1-sol", label: "GPT-6.1 Sol" },
+      { key: "openai/gpt-6-luna", label: "GPT-6 Luna" },
+      { key: "openai-codex/gpt-6.1-sol", label: "GPT-6.1 Sol" },
+      { key: "anthropic/claude-opus-5-5", label: "Opus 5.5" },
       { key: "anthropic/claude-opus-4-8", label: "Opus 4.8" },
       { key: "anthropic/claude-opus-4-7", label: "Opus 4.7" },
       { key: "anthropic/claude-opus-4-6", label: "Opus 4.6" },
       { key: "openai/gpt-5.5", label: "GPT-5.5" },
       { key: "openai/gpt-6-astra", label: "GPT-6 Astra" },
-      { key: "openai/gpt-5.6-sol", label: "GPT-5.6 Sol" },
+      { key: "openai/gpt-6-sol", label: "GPT-6 Sol" },
       { key: "openai-codex/gpt-5.4", label: "GPT-5.4" },
       { key: "openai-codex/gpt-5.5", label: "GPT-5.5" },
     ]);
 
     expect(featured.map((entry) => entry.key)).toEqual([
-      "anthropic/claude-opus-4-8",
-      "anthropic/claude-opus-4-7",
-      "anthropic/claude-opus-4-6",
+      "anthropic/claude-opus-5-5",
+      "anthropic/claude-sonnet-5-5",
+      "anthropic/claude-haiku-5-5",
+      "openai/gpt-6.1-sol",
       "openai/gpt-6-astra",
-      "openai/gpt-5.6-sol",
-      "openai/gpt-5.5",
-      "google/gemini-3.1-pro-preview",
+      "openai/gpt-6-luna",
+      "google/gemini-3.8-flash",
     ]);
-    expect(featured[0]?.featuredLabel).toBe("Opus 4.8");
-    expect(featured[1]?.featuredLabel).toBe("Opus 4.7");
-    expect(featured[3]?.featuredLabel).toBe("GPT-6 Astra");
-    expect(featured[4]?.featuredLabel).toBe("GPT-5.6 Sol");
-    expect(featured[5]?.featuredLabel).toBe("GPT-5.5");
-    expect(featured[6]?.featuredLabel).toBe("Gemini 3.1 Pro");
+    expect(featured[0]?.featuredLabel).toBe("Opus 5.5");
+    expect(featured[1]?.featuredLabel).toBe("Sonnet 5.5");
+    expect(featured[2]?.featuredLabel).toBe("Haiku 5.5");
+    expect(featured[3]?.featuredLabel).toBe("GPT-6.1 Sol");
+    expect(featured[4]?.featuredLabel).toBe("GPT-6 Astra");
+    expect(featured[5]?.featuredLabel).toBe("GPT-6 Luna");
+    expect(featured[6]?.featuredLabel).toBe("Gemini 3.8 Flash");
   });
 
   it("removes deprecated Codex 5.3 models from onboarding", async () => {
@@ -75,6 +82,12 @@ describe("frontend/model-config", () => {
 
   it("uses Codex OAuth for canonical models with the Codex runtime", async () => {
     const modelConfig = await loadModelConfig();
+    expect(
+      modelConfig.getOnboardingModelProvider({
+        modelKey: "openai/gpt-6.1-sol",
+        models: [{ key: "openai/gpt-6.1-sol" }],
+      }),
+    ).toBe("openai-codex");
     expect(
       modelConfig.getOnboardingModelProvider({
         modelKey: "openai/gpt-6-astra",
@@ -102,9 +115,27 @@ describe("frontend/model-config", () => {
     ]);
 
     expect(catalog).toContainEqual({
+      key: "openai/gpt-6.1-sol",
+      provider: "openai",
+      label: "GPT-6.1 Sol",
+      agentRuntime: { id: "codex" },
+    });
+    expect(catalog).toContainEqual({
       key: "openai/gpt-6-astra",
       provider: "openai",
       label: "GPT-6 Astra",
+      agentRuntime: { id: "codex" },
+    });
+    expect(catalog).toContainEqual({
+      key: "openai/gpt-6-sol",
+      provider: "openai",
+      label: "GPT-6 Sol",
+      agentRuntime: { id: "codex" },
+    });
+    expect(catalog).toContainEqual({
+      key: "openai/gpt-6-luna",
+      provider: "openai",
+      label: "GPT-6 Luna",
       agentRuntime: { id: "codex" },
     });
     expect(catalog).toContainEqual({
