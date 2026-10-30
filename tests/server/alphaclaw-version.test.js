@@ -96,7 +96,7 @@ describe("server/alphaclaw-version", () => {
       expect.objectContaining({
         ok: true,
         currentVersion: expect.any(String),
-        currentDecodeVersion: "0.7.0",
+        currentDecodeVersion: JSON.parse(fs.readFileSync(path.join(kNpmPackageRoot, "package.json"), "utf8")).decodeVersion,
         currentOpenclawVersion: "2026.4.10",
         latestVersion: "99.0.0",
         hasUpdate: true,

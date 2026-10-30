@@ -1,6 +1,27 @@
 #!/usr/bin/env sh
-case "$1" in
-  *Username*) echo "x-access-token" ;;
-  *Password*) echo "${GITHUB_TOKEN:-}" ;;
-  *) echo "" ;;
+# Fail closed unless this is Git's HTTPS credential prompt for github.com.
+# Inspect the authority, not a substring (which could be in a path or username).
+case "${1:-}" in
+  "Username for '"*"': ") kind=username ;;
+  "Password for '"*"': ") kind=password ;;
+  *) printf '\n'; exit 0 ;;
+esac
+url=${1#*\'}
+url=${url%\': }
+case "$url" in
+  https://*) authority=${url#https://}; authority=${authority%%/*} ;;
+  *) printf '\n'; exit 0 ;;
+esac
+# Never let URL controls, query strings, or fragments confuse authority parsing.
+case "$url" in
+  *[[:space:]]*|*\\*|*\?*|*\#*|*\'*) printf '\n'; exit 0 ;;
+esac
+host=${authority##*@}
+case "$host" in
+  github.com|github.com:443) ;;
+  *) printf '\n'; exit 0 ;;
+esac
+case "$kind" in
+  username) printf '%s\n' 'x-access-token' ;;
+  password) printf '%s\n' "${GITHUB_TOKEN:-}" ;;
 esac

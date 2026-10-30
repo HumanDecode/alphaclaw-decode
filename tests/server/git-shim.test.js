@@ -32,8 +32,8 @@ const createBehaviorHarness = ({ repoRoot }) => {
       '  printf "GIT_ASKPASS=%s\\n" "${GIT_ASKPASS:-}"',
       '  printf "GIT_TERMINAL_PROMPT=%s\\n" "${GIT_TERMINAL_PROMPT:-}"',
       '  if [ -n "${GIT_ASKPASS:-}" ]; then',
-      '    printf "ASKPASS_USER=%s\\n" "$("$GIT_ASKPASS" "Username for https://github.com")"',
-      '    printf "ASKPASS_PASS=%s\\n" "$("$GIT_ASKPASS" "Password for https://github.com")"',
+      `    printf "ASKPASS_USER=%s\\n" "$("$GIT_ASKPASS" "Username for 'https://github.com': ")"`,
+      `    printf "ASKPASS_PASS=%s\\n" "$("$GIT_ASKPASS" "Password for 'https://github.com': ")"`,
       "  fi",
       `} > ${shellQuote(logPath)}`,
       "",
@@ -220,7 +220,78 @@ describe("server git shim scripts", () => {
   it("contains valid shell syntax for git askpass script", () => {
     execFileSync("sh", ["-n", kGitAskPassPath], { stdio: "pipe" });
     const content = fs.readFileSync(kGitAskPassPath, "utf8");
-    expect(content).toContain("*Username*)");
-    expect(content).toContain("*Password*)");
+    expect(content).toContain("host=${authority##*@}");
+  });
+
+  it.each([
+    "https://github.com",
+    "https://github.com/org/repo.git",
+    "https://x-access-token@github.com",
+    "https://user@github.com:443/org/repo.git",
+  ])("answers exact GitHub HTTPS credential prompts: %s", (url) => {
+    const run = (kind) => execFileSync("sh", [kGitAskPassPath, `${kind} for '${url}': `], {
+      env: { ...process.env, GITHUB_TOKEN: "audit-dummy-token" }, encoding: "utf8",
+    }).trim();
+    expect(run("Username")).toBe("x-access-token");
+    expect(run("Password")).toBe("audit-dummy-token");
+  });
+
+  it.each([
+    "https://attacker.invalid",
+    "https://github.com.attacker.invalid",
+    "https://evilgithub.com",
+    "https://github.com@attacker.invalid",
+    "https://attacker.invalid/github.com",
+    "https://attacker.invalid/path@github.com",
+    "https://attacker.invalid?@github.com",
+    "https://attacker.invalid#@github.com",
+    "https://github.com:8443",
+    "http://github.com",
+    "https://github.com\\@attacker.invalid",
+    "https://github.com\n.attacker.invalid",
+  ])("withholds credentials for untrusted authority: %s", (url) => {
+    for (const kind of ["Username", "Password"]) {
+      expect(execFileSync("sh", [kGitAskPassPath, `${kind} for '${url}': `], {
+        env: { ...process.env, GITHUB_TOKEN: "audit-dummy-token" }, encoding: "utf8",
+      }).trim()).toBe("");
+    }
+  });
+
+  it.each(["", "Password", "Password for https://github.com", "prefix Password for 'https://github.com': "])("rejects malformed prompts: %s", (prompt) => {
+    expect(execFileSync("sh", [kGitAskPassPath, prompt], {
+      env: { ...process.env, GITHUB_TOKEN: "audit-dummy-token" }, encoding: "utf8",
+    }).trim()).toBe("");
+  });
+
+  it("works with real Git credential prompts without contacting a server", () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "alphaclaw-askpass-"));
+    const script = path.join(dir, "askpass");
+    fs.copyFileSync(kGitAskPassPath, script);
+    fs.chmodSync(script, 0o700);
+    try {
+      const env = {
+        ...process.env,
+        GIT_ASKPASS: script,
+        GIT_TERMINAL_PROMPT: "0",
+        GITHUB_TOKEN: "audit-dummy-token",
+        LC_ALL: "C",
+      };
+      const args = ["-c", "credential.helper=", "credential", "fill"];
+      const output = execFileSync("git", args, {
+        env, encoding: "utf8", input: "protocol=https\nhost=github.com\n\n",
+      });
+      expect(output).toContain("username=x-access-token");
+      expect(output).toContain("password=audit-dummy-token");
+      for (const host of ["attacker.invalid", "github.com.attacker.invalid"]) {
+        const denied = execFileSync("git", args, {
+          env, encoding: "utf8", stdio: ["pipe", "pipe", "pipe"],
+          input: `protocol=https\nhost=${host}\n\n`,
+        });
+        expect(denied).not.toContain("audit-dummy-token");
+        expect(denied).not.toContain("x-access-token");
+      }
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
   });
 });

@@ -368,15 +368,7 @@ const runGitSync = () => {
   try {
     fs.writeFileSync(
       askPassPath,
-      [
-        "#!/usr/bin/env sh",
-        'case "$1" in',
-        '  *Username*) echo "x-access-token" ;;',
-        '  *Password*) echo "${GITHUB_TOKEN:-}" ;;',
-        '  *) echo "" ;;',
-        "esac",
-        "",
-      ].join("\n"),
+      fs.readFileSync(path.join(__dirname, "..", "lib", "scripts", "git-askpass"), "utf8"),
       { mode: 0o700 },
     );
 
