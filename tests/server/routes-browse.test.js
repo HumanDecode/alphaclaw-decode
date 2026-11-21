@@ -298,8 +298,9 @@ describe("server/routes/browse", () => {
       .query({ path: "download-me.txt" });
 
     expect(res.status).toBe(200);
-    expect(String(res.headers["content-disposition"] || "")).toContain(
-      'attachment; filename="download-me.txt"',
+    // Both token and quoted filename forms are valid Content-Disposition values.
+    expect(String(res.headers["content-disposition"] || "")).toMatch(
+      /^attachment; filename=(?:"download-me\.txt"|download-me\.txt)$/,
     );
     expect(res.text).toBe("file payload\n");
   });
