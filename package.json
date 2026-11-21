@@ -1,7 +1,7 @@
 {
   "name": "@chrysb/alphaclaw",
   "version": "0.9.37",
-  "decodeVersion": "0.8.3",
+  "decodeVersion": "0.8.4",
   "publishConfig": {
     "access": "public"
   },
@@ -36,7 +36,7 @@
   "dependencies": {
     "express": "^5.2.1",
     "http-proxy": "^1.18.1",
-    "openclaw": "2026.11.6",
+    "openclaw": "https://github.com/HumanDecode/alphaclaw-decode/releases/download/openclaw-2026.11.6-decode-origin.1/openclaw-2026.11.6-authenticated-origin-2ab68dcbc196.tgz",
     "ws": "^8.19.0"
   },
   "devDependencies": {
